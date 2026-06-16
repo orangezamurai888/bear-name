@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bear Game</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #cceeff;
+}
+
+#ui {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: white;
+  padding: 10px;
+  border-radius: 10px;
+  font-family: sans-serif;
+}
+
+button {
+  font-size: 16px;
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+  💰<span id="money">0</span><br>
+  🍖<span id="meat">0</span><br>
+  👷<span id="workers">0</span><br>
+  <button onclick="hire()">スタッフ雇用(50円)</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.onresize = resize;
+
+let money = 0;
+let meat = 0;
+let workers = 0;
+
+let player = {
+  x: 200,
+  y: 200,
+  r: 20
+};
+
+let bears = [];
+
+function spawnBear(){
+  bears.push({
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    hp: 100
+  });
+}
+
+for(let i=0;i<5;i++) spawnBear();
+
+canvas.addEventListener("click",(e)=>{
+  player.x = e.clientX;
+  player.y = e.clientY;
+});
+
+function hire(){
+  if(money>=50){
+    money-=50;
+    workers++;
+  }
+}
+
+setInterval(()=>{
+  money += workers * 5;
+},1000);
+
+function update(){
+
+  bears.forEach(b=>{
+    let dx = player.x - b.x;
+    let dy = player.y - b.y;
+    let d = Math.hypot(dx,dy);
+
+    b.x += dx/d * 0.5;
+    b.y += dy/d * 0.5;
+
+    if(d < 40){
+      b.hp -= 1;
+    }
+  });
+
+  bears = bears.filter(b=>{
+    if(b.hp <= 0){
+      meat++;
+      money += 10;
+      spawnBear();
+      return false;
+    }
+    return true;
+  });
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle="blue";
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,20,0,Math.PI*2);
+  ctx.fill();
+
+  bears.forEach(b=>{
+    ctx.fillStyle="white";
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,20,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  document.getElementById("money").textContent = Math.floor(money);
+  document.getElementById("meat").textContent = meat;
+  document.getElementById("workers").textContent = workers;
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
