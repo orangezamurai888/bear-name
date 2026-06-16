@@ -2,143 +2,145 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bear Game</title>
+<title>Hunter Game v0.1</title>
 <style>
 body {
-  margin: 0;
-  overflow: hidden;
-  background: #cceeff;
+    margin: 0;
+    overflow: hidden;
+    background: #222;
 }
 
-#ui {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  background: white;
-  padding: 10px;
-  border-radius: 10px;
-  font-family: sans-serif;
-}
-
-button {
-  font-size: 16px;
+canvas {
+    display: block;
 }
 </style>
 </head>
 <body>
 
-<div id="ui">
-  💰<span id="money">0</span><br>
-  🍖<span id="meat">0</span><br>
-  👷<span id="workers">0</span><br>
-  <button onclick="hire()">スタッフ雇用(50円)</button>
-</div>
-
 <canvas id="game"></canvas>
 
 <script>
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-function resize(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resize();
-window.onresize = resize;
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-let money = 0;
-let meat = 0;
-let workers = 0;
-
-let player = {
-  x: 200,
-  y: 200,
-  r: 20
-};
-
-let bears = [];
-
-function spawnBear(){
-  bears.push({
-    x: Math.random()*canvas.width,
-    y: Math.random()*canvas.height,
-    hp: 100
-  });
-}
-
-for(let i=0;i<5;i++) spawnBear();
-
-canvas.addEventListener("click",(e)=>{
-  player.x = e.clientX;
-  player.y = e.clientY;
+window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 });
 
-function hire(){
-  if(money>=50){
-    money-=50;
-    workers++;
-  }
+const world = {
+    width: 3000,
+    height: 3000
+};
+
+const player = {
+    x: 1500,
+    y: 1500,
+    speed: 4
+};
+
+const camera = {
+    x: 0,
+    y: 0
+};
+
+const keys = {};
+
+window.addEventListener("keydown", e => {
+    keys[e.key.toLowerCase()] = true;
+});
+
+window.addEventListener("keyup", e => {
+    keys[e.key.toLowerCase()] = false;
+});
+
+function updatePlayer() {
+
+    if (keys["w"]) player.y -= player.speed;
+    if (keys["s"]) player.y += player.speed;
+    if (keys["a"]) player.x -= player.speed;
+    if (keys["d"]) player.x += player.speed;
+
+    player.x = Math.max(0, Math.min(world.width, player.x));
+    player.y = Math.max(0, Math.min(world.height, player.y));
+
+    camera.x = player.x - canvas.width / 2;
+    camera.y = player.y - canvas.height / 2;
+
+    camera.x = Math.max(0, Math.min(world.width - canvas.width, camera.x));
+    camera.y = Math.max(0, Math.min(world.height - canvas.height, camera.y));
 }
 
-setInterval(()=>{
-  money += workers * 5;
-},1000);
+function drawWorld() {
 
-function update(){
+    ctx.fillStyle = "#66bb66";
+    ctx.fillRect(-camera.x, -camera.y, world.width, world.height);
 
-  bears.forEach(b=>{
-    let dx = player.x - b.x;
-    let dy = player.y - b.y;
-    let d = Math.hypot(dx,dy);
+    // 草
+    ctx.fillStyle = "#55aa55";
 
-    b.x += dx/d * 0.5;
-    b.y += dy/d * 0.5;
+    for(let x=0; x<world.width; x+=100){
+        for(let y=0; y<world.height; y+=100){
 
-    if(d < 40){
-      b.hp -= 1;
+            ctx.beginPath();
+            ctx.arc(
+                x - camera.x,
+                y - camera.y,
+                3,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
     }
-  });
-
-  bears = bears.filter(b=>{
-    if(b.hp <= 0){
-      meat++;
-      money += 10;
-      spawnBear();
-      return false;
-    }
-    return true;
-  });
 }
 
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+function drawPlayer() {
 
-  ctx.fillStyle="blue";
-  ctx.beginPath();
-  ctx.arc(player.x,player.y,20,0,Math.PI*2);
-  ctx.fill();
+    let screenX = player.x - camera.x;
+    let screenY = player.y - camera.y;
 
-  bears.forEach(b=>{
-    ctx.fillStyle="white";
+    // 頭
+    ctx.fillStyle = "#ffcc99";
     ctx.beginPath();
-    ctx.arc(b.x,b.y,20,0,Math.PI*2);
+    ctx.arc(screenX, screenY - 15, 10, 0, Math.PI*2);
     ctx.fill();
-  });
 
-  document.getElementById("money").textContent = Math.floor(money);
-  document.getElementById("meat").textContent = meat;
-  document.getElementById("workers").textContent = workers;
+    // 体
+    ctx.fillStyle = "#3366cc";
+    ctx.fillRect(screenX - 8, screenY - 5, 16, 25);
+
+    // 足
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.moveTo(screenX - 5, screenY + 20);
+    ctx.lineTo(screenX - 8, screenY + 35);
+
+    ctx.moveTo(screenX + 5, screenY + 20);
+    ctx.lineTo(screenX + 8, screenY + 35);
+    ctx.stroke();
 }
 
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
+function gameLoop() {
+
+    updatePlayer();
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    drawWorld();
+    drawPlayer();
+
+    requestAnimationFrame(gameLoop);
 }
 
-loop();
+gameLoop();
+
 </script>
 
 </body>
