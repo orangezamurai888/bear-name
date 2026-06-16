@@ -2,134 +2,212 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Hunter Game v0.1</title>
+<meta name="viewport"
+content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Hunter Game</title>
+
 <style>
-body {
-    margin: 0;
-    overflow: hidden;
-    background: #222;
+body{
+    margin:0;
+    overflow:hidden;
+    touch-action:none;
 }
 
-canvas {
-    display: block;
+canvas{
+    display:block;
+    background:#66bb66;
+}
+
+#ui{
+    position:fixed;
+    top:10px;
+    left:10px;
+    color:white;
+    font-size:20px;
+    font-family:sans-serif;
+    z-index:100;
+}
+
+#joystickBase{
+    position:fixed;
+    left:20px;
+    bottom:40px;
+    width:120px;
+    height:120px;
+    border-radius:60px;
+    background:rgba(255,255,255,0.25);
+}
+
+#joystickStick{
+    position:absolute;
+    left:35px;
+    top:35px;
+    width:50px;
+    height:50px;
+    border-radius:25px;
+    background:rgba(255,255,255,0.8);
 }
 </style>
 </head>
+
 <body>
 
+<div id="ui">
+💰0　🍖0
+</div>
+
 <canvas id="game"></canvas>
+
+<div id="joystickBase">
+    <div id="joystickStick"></div>
+</div>
 
 <script>
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-window.addEventListener("resize", () => {
+function resize(){
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-});
+}
+resize();
+window.addEventListener("resize",resize);
 
 const world = {
-    width: 3000,
-    height: 3000
+    width:3000,
+    height:3000
 };
 
 const player = {
-    x: 1500,
-    y: 1500,
-    speed: 4
+    x:1500,
+    y:1500,
+    speed:4
 };
 
 const camera = {
-    x: 0,
-    y: 0
+    x:0,
+    y:0
 };
 
-const keys = {};
+let moveX = 0;
+let moveY = 0;
 
-window.addEventListener("keydown", e => {
-    keys[e.key.toLowerCase()] = true;
+const base = document.getElementById("joystickBase");
+const stick = document.getElementById("joystickStick");
+
+base.addEventListener("touchmove",(e)=>{
+
+    const touch = e.touches[0];
+
+    const rect = base.getBoundingClientRect();
+
+    let dx = touch.clientX - (rect.left+60);
+    let dy = touch.clientY - (rect.top+60);
+
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const max = 35;
+
+    if(dist > max){
+        dx = dx/dist * max;
+        dy = dy/dist * max;
+    }
+
+    stick.style.left = (35+dx)+"px";
+    stick.style.top = (35+dy)+"px";
+
+    moveX = dx/max;
+    moveY = dy/max;
+
+    e.preventDefault();
+
+},{passive:false});
+
+base.addEventListener("touchend",()=>{
+
+    moveX = 0;
+    moveY = 0;
+
+    stick.style.left = "35px";
+    stick.style.top = "35px";
 });
 
-window.addEventListener("keyup", e => {
-    keys[e.key.toLowerCase()] = false;
-});
+function update(){
 
-function updatePlayer() {
+    player.x += moveX * player.speed;
+    player.y += moveY * player.speed;
 
-    if (keys["w"]) player.y -= player.speed;
-    if (keys["s"]) player.y += player.speed;
-    if (keys["a"]) player.x -= player.speed;
-    if (keys["d"]) player.x += player.speed;
+    player.x = Math.max(0,Math.min(world.width,player.x));
+    player.y = Math.max(0,Math.min(world.height,player.y));
 
-    player.x = Math.max(0, Math.min(world.width, player.x));
-    player.y = Math.max(0, Math.min(world.height, player.y));
-
-    camera.x = player.x - canvas.width / 2;
-    camera.y = player.y - canvas.height / 2;
-
-    camera.x = Math.max(0, Math.min(world.width - canvas.width, camera.x));
-    camera.y = Math.max(0, Math.min(world.height - canvas.height, camera.y));
+    camera.x = player.x - canvas.width/2;
+    camera.y = player.y - canvas.height/2;
 }
 
-function drawWorld() {
+function drawWorld(){
 
-    ctx.fillStyle = "#66bb66";
-    ctx.fillRect(-camera.x, -camera.y, world.width, world.height);
+    ctx.fillStyle="#66bb66";
+    ctx.fillRect(
+        -camera.x,
+        -camera.y,
+        world.width,
+        world.height
+    );
 
-    // 草
-    ctx.fillStyle = "#55aa55";
+    ctx.fillStyle="#4aa84a";
 
-    for(let x=0; x<world.width; x+=100){
-        for(let y=0; y<world.height; y+=100){
+    for(let x=0;x<world.width;x+=100){
+        for(let y=0;y<world.height;y+=100){
 
             ctx.beginPath();
             ctx.arc(
-                x - camera.x,
-                y - camera.y,
+                x-camera.x,
+                y-camera.y,
                 3,
                 0,
-                Math.PI * 2
+                Math.PI*2
             );
             ctx.fill();
+
         }
     }
+
 }
 
-function drawPlayer() {
+function drawPlayer(){
 
-    let screenX = player.x - camera.x;
-    let screenY = player.y - camera.y;
+    const x = player.x-camera.x;
+    const y = player.y-camera.y;
 
     // 頭
-    ctx.fillStyle = "#ffcc99";
+    ctx.fillStyle="#ffcc99";
     ctx.beginPath();
-    ctx.arc(screenX, screenY - 15, 10, 0, Math.PI*2);
+    ctx.arc(x,y-15,10,0,Math.PI*2);
     ctx.fill();
 
     // 体
-    ctx.fillStyle = "#3366cc";
-    ctx.fillRect(screenX - 8, screenY - 5, 16, 25);
+    ctx.fillStyle="#3366cc";
+    ctx.fillRect(x-8,y-5,16,25);
 
     // 足
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle="black";
+    ctx.lineWidth=3;
 
     ctx.beginPath();
-    ctx.moveTo(screenX - 5, screenY + 20);
-    ctx.lineTo(screenX - 8, screenY + 35);
 
-    ctx.moveTo(screenX + 5, screenY + 20);
-    ctx.lineTo(screenX + 8, screenY + 35);
+    ctx.moveTo(x-5,y+20);
+    ctx.lineTo(x-8,y+35);
+
+    ctx.moveTo(x+5,y+20);
+    ctx.lineTo(x+8,y+35);
+
     ctx.stroke();
 }
 
-function gameLoop() {
+function gameLoop(){
 
-    updatePlayer();
+    update();
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
